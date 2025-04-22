@@ -1,6 +1,34 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
+const roomSchema = new mongoose.Schema({
+  roomNumber: {
+    type: String,
+    required: true
+  },
+  capacity: {
+    type: Number,
+    default: 1,
+    required: true
+  },
+  occupants: {
+    type: Number,
+    default: 0
+  },
+  occupied: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const floorSchema = new mongoose.Schema({
+  floorName: {
+    type: String,
+    required: true
+  },
+  rooms: [roomSchema]
+});
+
 const hostelSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -35,6 +63,11 @@ const hostelSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isRoomArchitectureDefined: {
+    type: Boolean,
+    default: false
+  },
+  floors: [floorSchema],
   registrationDate: {
     type: Date,
     default: Date.now

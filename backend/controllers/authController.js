@@ -3,15 +3,14 @@ const Warden = require('../models/wardenModel');
 const Hosteller = require('../models/hostellerModel');
 const Hostel = require('../models/hostelModel');
 const jwt = require('jsonwebtoken');
+const { generateHotelId } = require('../utils/generators');
 
-// Generate JWT with role
+// Generate JWT
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };
-
-// Admin Authentication //
 
 // Login admin
 const loginAdmin = async (req, res) => {
@@ -45,7 +44,7 @@ const loginAdmin = async (req, res) => {
   }
 };
 
-// Create admin (only use once to create the initial admin)
+// Create new admin (admin registration)
 const createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -54,14 +53,7 @@ const createAdmin = async (req, res) => {
     const adminExists = await Admin.findOne({ email });
 
     if (adminExists) {
-      return res.status(400).json({ message: 'Admin already exists' });
-    }
-
-    // Count admins - ensure only one admin exists
-    const adminCount = await Admin.countDocuments();
-    
-    if (adminCount > 0) {
-      return res.status(400).json({ message: 'Only one admin can exist in the system' });
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Create admin
@@ -71,23 +63,18 @@ const createAdmin = async (req, res) => {
       password,
     });
 
-    if (admin) {
-      res.status(201).json({
-        _id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        token: generateToken(admin._id, 'admin'),
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid admin data' });
-    }
+    // Return new admin with token
+    res.status(201).json({
+      _id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      token: generateToken(admin._id, 'admin'),
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
-
-// Warden Authentication //
 
 // Login warden
 const loginWarden = async (req, res) => {
@@ -95,15 +82,15 @@ const loginWarden = async (req, res) => {
     const { email, password } = req.body;
 
     // Check for warden email
-    const warden = await Warden.findOne({ email }).populate('hostel', 'name hostelId');
+    const warden = await Warden.findOne({ email }).populate('hostel');
 
     if (!warden) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Check if warden is approved
+    // Check if approved
     if (!warden.isApproved) {
-      return res.status(403).json({ message: 'Your account is pending approval by admin' });
+      return res.status(403).json({ message: 'Your account is pending approval' });
     }
 
     // Check if password matches
@@ -138,10 +125,14 @@ const registerWardenRequest = async (req, res) => {
     if (wardenExists) {
       return res.status(400).json({ message: 'Email already registered' });
     }
+    
+    // Generate hostel ID
+    const hostelId = generateHotelId();
 
     // Create a new hostel (pending approval)
     const hostel = await Hostel.create({
       name: hostelName,
+      hostelId,
       address,
       totalRooms,
       rentPerMonth,
@@ -170,25 +161,36 @@ const registerWardenRequest = async (req, res) => {
   }
 };
 
-// Hosteller Authentication //
-
 // Login hosteller
 const loginHosteller = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password, hostelId } = req.body;
 
-    // Check for hosteller email
-    const hosteller = await Hosteller.findOne({ email }).populate('hostel', 'name hostelId');
+    // Check for hosteller username
+    const hosteller = await Hosteller.findOne({ username }).populate('hostel', 'name hostelId');
 
     if (!hosteller) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+    
+    // Check if hostelId matches
+    if (hostelId && hosteller.hostel.hostelId !== hostelId) {
+      return res.status(401).json({ message: 'Invalid hostel ID' });
+    }
+    
+    // Check if hosteller's stay has expired
+    if (hosteller.endDate && new Date() > new Date(hosteller.endDate)) {
+      return res.status(403).json({ 
+        message: 'Your stay duration has expired. Please contact your warden.',
+        expired: true
+      });
     }
 
     // Check if password matches
     const isMatch = await hosteller.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     // Return hosteller and token
@@ -199,6 +201,7 @@ const loginHosteller = async (req, res) => {
       room: hosteller.room,
       hostel: hosteller.hostel,
       rentPaid: hosteller.rentPaid,
+      endDate: hosteller.endDate,
       token: generateToken(hosteller._id, 'hosteller'),
     });
   } catch (error) {
@@ -208,9 +211,9 @@ const loginHosteller = async (req, res) => {
 };
 
 module.exports = { 
-  loginAdmin, 
+  loginAdmin,
   createAdmin, 
   loginWarden, 
   registerWardenRequest, 
-  loginHosteller 
+  loginHosteller
 };

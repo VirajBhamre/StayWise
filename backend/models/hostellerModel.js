@@ -13,11 +13,20 @@ const hostellerSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
+  username: {
+    type: String,
+    required: true,
+    unique: true
+  },
   password: {
     type: String,
     required: true
   },
   phone: {
+    type: String,
+    required: true
+  },
+  parentPhone: {
     type: String,
     required: true
   },
@@ -28,6 +37,15 @@ const hostellerSchema = new mongoose.Schema({
   },
   room: {
     type: String,
+    required: true
+  },
+  duration: {
+    type: Number,
+    required: true,
+    default: 12
+  },
+  endDate: {
+    type: Date,
     required: true
   },
   joinDate: {
@@ -60,7 +78,7 @@ hostellerSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare passwords
+// Match entered password with hashed password
 hostellerSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
