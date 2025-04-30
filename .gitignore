@@ -1,5 +1,4 @@
 ﻿# Environment variables
-.env
 .env.local
 .env.development
 .env.test
