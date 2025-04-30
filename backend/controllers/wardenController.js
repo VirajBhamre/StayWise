@@ -556,6 +556,268 @@ const getRentPaymentStatus = async (req, res) => {
   }
 };
 
+// Get all payments for warden's hostel
+const getAllPayments = async (req, res) => {
+  try {
+    // Find all payments for the warden's hostel
+    const payments = await Payment.find({ hostel: req.user.hostel })
+      .populate('hosteller', 'name email room')
+      .sort({ paymentDate: -1 });
+    
+    // Format payments for frontend display
+    const formattedPayments = payments.map(payment => {
+      // Generate payment ID if not exists
+      const paymentId = payment.transactionId || `PAY-${payment._id.toString().substr(0, 8).toUpperCase()}`;
+      
+      // Format month from the payment date
+      const month = new Date(payment.forMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      // Calculate due date (typically 5th of month)
+      const dueDate = new Date(payment.forMonth);
+      dueDate.setDate(5); // Set due date to 5th of month
+      
+      return {
+        _id: payment._id,
+        paymentId,
+        hosteller: payment.hosteller,
+        amount: payment.amount,
+        isPaid: payment.status === 'completed',
+        paidAt: payment.status === 'completed' ? payment.paymentDate : null,
+        month,
+        dueDate,
+        paymentMethod: payment.paymentMethod
+      };
+    });
+    
+    res.json(formattedPayments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Mark a payment as paid
+const markPaymentAsPaid = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { paymentMethod = 'cash' } = req.body;
+    
+    // Find the payment
+    const payment = await Payment.findById(paymentId);
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+    
+    // Verify the payment belongs to warden's hostel
+    if (payment.hostel.toString() !== req.user.hostel.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this payment' });
+    }
+    
+    // Update payment status
+    payment.status = 'completed';
+    payment.paymentDate = new Date();
+    payment.paymentMethod = paymentMethod;
+    
+    await payment.save();
+    
+    // Also update hosteller's rent status
+    const hosteller = await Hosteller.findById(payment.hosteller);
+    if (hosteller) {
+      hosteller.rentPaid = true;
+      hosteller.lastRentPayment = new Date();
+      await hosteller.save();
+    }
+    
+    res.json({
+      message: 'Payment marked as paid successfully',
+      payment
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Generate payment receipt
+const generatePaymentReceipt = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    
+    // Find the payment
+    const payment = await Payment.findById(paymentId)
+      .populate('hosteller', 'name email room')
+      .populate('hostel', 'name hostelId address');
+    
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found' });
+    }
+    
+    // Verify the payment belongs to warden's hostel
+    if (payment.hostel._id.toString() !== req.user.hostel.toString()) {
+      return res.status(403).json({ message: 'Not authorized to access this payment' });
+    }
+    
+    // Verify payment is completed
+    if (payment.status !== 'completed') {
+      return res.status(400).json({ message: 'Cannot generate receipt for unpaid payment' });
+    }
+    
+    // Generate receipt HTML
+    // This is a simple implementation - in a real app, you'd use a PDF library
+    const receiptHTML = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            .receipt { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .details { margin-bottom: 20px; }
+            .details div { margin-bottom: 5px; }
+            .amount { font-size: 24px; text-align: center; margin: 20px 0; }
+            .footer { text-align: center; font-size: 12px; margin-top: 40px; }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="header">
+              <h1>Payment Receipt</h1>
+              <h2>${payment.hostel.name}</h2>
+            </div>
+            
+            <div class="details">
+              <div><strong>Receipt No:</strong> ${payment.transactionId}</div>
+              <div><strong>Date:</strong> ${new Date(payment.paymentDate).toLocaleDateString()}</div>
+              <div><strong>Hosteller:</strong> ${payment.hosteller.name}</div>
+              <div><strong>Room:</strong> ${payment.hosteller.room}</div>
+              <div><strong>Payment Method:</strong> ${payment.paymentMethod}</div>
+              <div><strong>For Month:</strong> ${new Date(payment.forMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
+            </div>
+            
+            <div class="amount">
+              <strong>Amount Paid:</strong> $${payment.amount.toFixed(2)}
+            </div>
+            
+            <div class="footer">
+              <p>Thank you for your payment!</p>
+              <p>${payment.hostel.name} - ${payment.hostel.address || ''}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Send the receipt
+    res.setHeader('Content-Type', 'text/html');
+    res.send(receiptHTML);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get payment analytics for warden's hostel
+const getPaymentAnalytics = async (req, res) => {
+  try {
+    const { month = new Date().getMonth() + 1, year = new Date().getFullYear() } = req.query;
+    
+    // Convert to integers
+    const monthInt = parseInt(month);
+    const yearInt = parseInt(year);
+    
+    // Create date range for the selected month
+    const startDate = new Date(yearInt, monthInt - 1, 1);
+    const endDate = new Date(yearInt, monthInt, 0); // Last day of month
+    
+    // Find all payments for the selected month and hostel
+    const payments = await Payment.find({
+      hostel: req.user.hostel,
+      forMonth: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    });
+    
+    // Get total number of hostellers to calculate expected payments
+    const totalHostellers = await Hosteller.countDocuments({ hostel: req.user.hostel });
+    
+    // Calculate analytics
+    const paidPayments = payments.filter(p => p.status === 'completed');
+    const pendingPayments = payments.filter(p => p.status === 'pending');
+    
+    // Calculate overdue (pending payments where the due date has passed)
+    const today = new Date();
+    const dueDate = new Date(yearInt, monthInt - 1, 5); // Due date is 5th of each month
+    const overduePayments = pendingPayments.filter(() => today > dueDate);
+    
+    // Calculate collected and pending amounts
+    const collectedAmount = paidPayments.reduce((sum, p) => sum + p.amount, 0);
+    const pendingAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
+    
+    const analytics = {
+      totalCount: payments.length,
+      paidCount: paidPayments.length,
+      pendingCount: pendingPayments.length,
+      overdueCount: overduePayments.length,
+      collectedAmount,
+      pendingAmount,
+      month: startDate.toLocaleString('default', { month: 'long' }),
+      year: yearInt
+    };
+    
+    res.json(analytics);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Get payment history for a specific hosteller
+const getPaymentHistory = async (req, res) => {
+  try {
+    const { hostellerId } = req.params;
+    
+    // Find the hosteller
+    const hosteller = await Hosteller.findById(hostellerId);
+    
+    if (!hosteller) {
+      return res.status(404).json({ message: 'Hosteller not found' });
+    }
+    
+    // Check if hosteller belongs to warden's hostel
+    if (hosteller.hostel.toString() !== req.user.hostel.toString()) {
+      return res.status(403).json({ message: 'Not authorized to view this hosteller\'s payments' });
+    }
+    
+    // Get payment history
+    const payments = await Payment.find({ hosteller: hostellerId })
+      .sort({ forMonth: -1 });
+    
+    // Format payments for frontend display
+    const formattedPayments = payments.map(payment => {
+      // Format month from the payment date
+      const month = new Date(payment.forMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      // Calculate due date (typically 5th of month)
+      const dueDate = new Date(payment.forMonth);
+      dueDate.setDate(5); // Set due date to 5th of month
+      
+      return {
+        _id: payment._id,
+        amount: payment.amount,
+        isPaid: payment.status === 'completed',
+        paidAt: payment.status === 'completed' ? payment.paymentDate : null,
+        month,
+        dueDate
+      };
+    });
+    
+    res.json(formattedPayments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
 // Get warden dashboard stats
 const getWardenStats = async (req, res) => {
   try {
@@ -696,6 +958,11 @@ module.exports = {
   createEvent,
   getEvents,
   getRentPaymentStatus,
+  getAllPayments,
+  markPaymentAsPaid,
+  generatePaymentReceipt,
+  getPaymentAnalytics,
+  getPaymentHistory,
   getWardenStats,
   checkRoomArchitecture,
   defineRoomArchitecture

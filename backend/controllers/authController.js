@@ -28,6 +28,42 @@ const loginAdmin = async (req, res) => {
     const isMatch = await admin.matchPassword(password);
 
     if (!isMatch) {
+      // Count the number of admins in the system
+      const adminCount = await Admin.countDocuments();
+      
+      // If there's only one admin and password is incorrect (forgotten)
+      if (adminCount === 1) {
+        // Generate a new admin with random credentials
+        const newAdminEmail = `admin.recovery${Date.now()}@staywise.com`;
+        const newAdminPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-4) + "!1";
+        
+        // Create the new admin account
+        const recoveryAdmin = await Admin.create({
+          name: "Recovery Admin",
+          email: newAdminEmail,
+          password: newAdminPassword // This will be hashed by the pre-save hook in the model
+        });
+        
+        // Log the credentials to the console in a noticeable way
+        console.log('\n');
+        console.log('='.repeat(50));
+        console.log('\x1b[41m%s\x1b[0m', '  EMERGENCY ADMIN ACCOUNT CREATED  ');
+        console.log('='.repeat(50));
+        console.log('\x1b[33m%s\x1b[0m', 'Since you forgot your admin password and there is only one admin,');
+        console.log('\x1b[33m%s\x1b[0m', 'a new admin account has been created with the following credentials:');
+        console.log('\n');
+        console.log('\x1b[36m%s\x1b[0m', 'Email:    ', newAdminEmail);
+        console.log('\x1b[36m%s\x1b[0m', 'Password: ', newAdminPassword);
+        console.log('\n');
+        console.log('\x1b[31m%s\x1b[0m', 'IMPORTANT: Please login with these credentials immediately');
+        console.log('\x1b[31m%s\x1b[0m', 'and create a new admin account that you will remember.');
+        console.log('='.repeat(50));
+        console.log('\n');
+        
+        // Still return invalid credentials to avoid revealing too much information
+        return res.status(401).json({ message: 'Invalid email or password. Check server console for emergency access.' });
+      }
+      
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 

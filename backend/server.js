@@ -45,6 +45,9 @@ const checkAdminCredentials = async () => {
         console.log('\x1b[33m%s\x1b[0m', 'Password: For security, passwords are hashed. Use the password you set during registration.');
         console.log('\x1b[33m%s\x1b[0m', 'If you forgot your password, you will need to modify the database directly or create a new admin account.');
       }
+      
+      // Create a new admin account with a complex password since the user forgot the password
+      await createNewAdminAccount();
     } else {
       console.log('\x1b[31m%s\x1b[0m', '✗ No admin accounts found in database.');
       console.log('\x1b[33m%s\x1b[0m', 'Please register an admin account to access the admin panel.');
@@ -55,6 +58,73 @@ const checkAdminCredentials = async () => {
     console.log('=======================================\n');
   } catch (error) {
     console.error('\x1b[31m%s\x1b[0m', '✗ Error checking admin credentials:');
+    console.error(error);
+  }
+};
+
+// Function to create a new admin account with a complex password
+const createNewAdminAccount = async () => {
+  try {
+    // Generate a secure random email and password
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 10);
+    const newAdminEmail = `admin.recovery${timestamp}@staywise.com`;
+    
+    // Create a complex password with uppercase, lowercase, numbers and special characters
+    const uppercaseChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercaseChars = 'abcdefghijkmnopqrstuvwxyz';
+    const numberChars = '23456789';
+    const specialChars = '!@#$%^&*_-+=';
+    
+    let complexPassword = '';
+    // Add at least one character from each character set
+    complexPassword += uppercaseChars.charAt(Math.floor(Math.random() * uppercaseChars.length));
+    complexPassword += lowercaseChars.charAt(Math.floor(Math.random() * lowercaseChars.length));
+    complexPassword += numberChars.charAt(Math.floor(Math.random() * numberChars.length));
+    complexPassword += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+    
+    // Add more random characters to reach desired length (12 characters)
+    const allChars = uppercaseChars + lowercaseChars + numberChars + specialChars;
+    for (let i = 0; i < 8; i++) {
+      complexPassword += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+    
+    // Shuffle the password characters (Fisher-Yates algorithm)
+    complexPassword = complexPassword.split('').sort(() => 0.5 - Math.random()).join('');
+    
+    // Check if an admin with this email already exists
+    const existingAdmin = await Admin.findOne({ email: newAdminEmail });
+    if (existingAdmin) {
+      // If email already exists (very unlikely), just return without creating
+      return;
+    }
+    
+    // Create the new admin account
+    const newAdmin = await Admin.create({
+      name: "Emergency Admin",
+      email: newAdminEmail,
+      password: complexPassword // Will be hashed by the model's pre-save hook
+    });
+    
+    if (newAdmin) {
+      // Display the credentials in the console with attention-grabbing formatting
+      console.log('\n');
+      console.log('='.repeat(80));
+      console.log('\x1b[41m%s\x1b[0m', '                     NEW EMERGENCY ADMIN ACCOUNT CREATED                      ');
+      console.log('='.repeat(80));
+      console.log('\x1b[33m%s\x1b[0m', 'Since you forgot your admin password, a new admin account has been created');
+      console.log('\x1b[33m%s\x1b[0m', 'with the following credentials. USE THESE TO LOGIN:');
+      console.log('\n');
+      console.log('\x1b[36m%s\x1b[0m', 'Email:    ', newAdminEmail);
+      console.log('\x1b[36m%s\x1b[0m', 'Password: ', complexPassword);
+      console.log('\n');
+      console.log('\x1b[31m%s\x1b[0m', 'IMPORTANT: These credentials are shown ONLY ONCE in this console.');
+      console.log('\x1b[31m%s\x1b[0m', 'Please save them immediately in a secure location.');
+      console.log('='.repeat(80));
+      console.log('\n');
+    }
+  } catch (error) {
+    console.error('\x1b[31m%s\x1b[0m', '✗ Error creating new admin account:');
     console.error(error);
   }
 };

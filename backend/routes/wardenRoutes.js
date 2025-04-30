@@ -16,6 +16,11 @@ const {
   createEvent,
   getEvents,
   getRentPaymentStatus,
+  getAllPayments,
+  markPaymentAsPaid,
+  generatePaymentReceipt,
+  getPaymentAnalytics,
+  getPaymentHistory,
   getWardenStats,
   checkRoomArchitecture,
   defineRoomArchitecture
@@ -57,5 +62,12 @@ router.get('/events', getEvents);
 
 // Rent status
 router.get('/rent-status', getRentPaymentStatus);
+
+// Payment management
+router.get('/payments', getAllPayments);
+router.put('/payments/:paymentId/mark-paid', markPaymentAsPaid);
+router.get('/payments/:paymentId/receipt', generatePaymentReceipt);
+router.get('/payment-analytics', getPaymentAnalytics);
+router.get('/payments/history/:hostellerId', getPaymentHistory);
 
 module.exports = router;
