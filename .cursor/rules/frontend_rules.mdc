@@ -1,0 +1,207 @@
+---
+alwaysApply: true
+---
+# FRONTEND ENGINEERING & UI/UX RULES
+# Philosophy: Minimal. Classy. Fast. Professional.
+# Think like a Senior Frontend Engineer + UI/UX Designer.
+
+====================================================
+1. CORE PRINCIPLES
+====================================================
+
+1.1 Minimalism First
+- Remove anything that doesn’t serve a clear purpose.
+- Avoid visual noise (extra borders, random shadows, excessive colors).
+- Use whitespace intentionally.
+- Prioritize clarity over decoration.
+
+1.2 Professional Aesthetic
+- Neutral color palette with 1 primary accent color.
+- Avoid bright or neon colors unless brand-specific.
+- Use consistent border radius (e.g., 8px or 12px max).
+- Subtle shadows only (low opacity, soft blur).
+
+1.3 Performance Is a Feature
+- Every component must justify its render.
+- Optimize before shipping, not after complaints.
+- Avoid unnecessary re-renders.
+
+====================================================
+2. DESIGN SYSTEM RULES
+====================================================
+
+2.1 Typography
+- Maximum 2 font families.
+- Use clear hierarchy:
+  - H1: 32–40px
+  - H2: 24–28px
+  - H3: 18–22px
+  - Body: 14–16px
+- Line height: 1.5–1.7 for readability.
+- Avoid ultra-thin fonts for body text.
+
+2.2 Spacing System
+- Use 4px or 8px spacing scale.
+- No random margin/padding values.
+- Maintain consistent vertical rhythm.
+
+2.3 Color System
+- Define:
+  - Primary
+  - Neutral (gray scale)
+  - Success
+  - Warning
+  - Error
+- Use semantic naming (e.g., text-muted, bg-surface).
+- Ensure WCAG AA contrast minimum.
+
+2.4 Component Consistency
+- Buttons:
+  - One primary style
+  - One secondary style
+  - One danger style
+- Inputs:
+  - Same height
+  - Same border style
+  - Clear focus state
+- Cards:
+  - Same padding
+  - Same radius
+  - Subtle elevation
+
+====================================================
+3. UI/UX EXPERIENCE RULES
+====================================================
+
+3.1 Microinteractions
+- Hover states must be subtle (color shift, slight elevation).
+- Use transitions: 150ms–250ms ease.
+- Never use aggressive animations.
+- Avoid bounce effects in professional apps.
+
+3.2 Loading & Feedback
+- Always show loading state for async operations.
+- Disable buttons while submitting.
+- Show meaningful error messages.
+- Never leave the user guessing.
+
+3.3 Layout Structure
+- Use grid or flex intentionally.
+- Avoid nested div chaos.
+- Max content width for dashboards: 1200–1400px.
+- Keep readable margins on both sides.
+
+3.4 Accessibility
+- All buttons must be keyboard accessible.
+- Use proper semantic HTML.
+- Label all form inputs.
+- Avoid divs as buttons.
+- Provide aria-labels where necessary.
+
+====================================================
+4. EFFICIENT FRONTEND ENGINEERING RULES
+====================================================
+
+4.1 Component Architecture
+- Use reusable components.
+- Avoid duplicate UI patterns.
+- Follow atomic or feature-based folder structure.
+- Keep components small and single-responsibility.
+
+4.2 State Management
+- Keep state as local as possible.
+- Avoid global state unless necessary.
+- Memoize heavy components.
+- Avoid derived state duplication.
+
+4.3 Performance Optimization
+- Lazy load heavy components.
+- Use dynamic imports for large modules.
+- Optimize images (compressed, correct size).
+- Avoid inline object/function creation in render.
+- Use proper key props in lists.
+
+4.4 Clean Code Standards
+- No magic numbers.
+- No inline styles (unless dynamic and justified).
+- No console.logs in production.
+- Use descriptive variable names.
+- Write self-documenting code.
+
+====================================================
+5. RESPONSIVE DESIGN RULES
+====================================================
+
+5.1 Mobile First
+- Design mobile layout before desktop.
+- No horizontal scroll.
+- Maintain touch-friendly spacing (min 44px tap targets).
+
+5.2 Breakpoints
+- Define consistent breakpoints.
+- Avoid random media queries.
+- Test on:
+  - Mobile
+  - Tablet
+  - Desktop
+
+====================================================
+6. ANIMATION & TRANSITION RULES
+====================================================
+
+6.1 Motion Philosophy
+- Motion must clarify, not decorate.
+- Use fade and slight slide.
+- Avoid spinning loaders unless necessary.
+
+6.2 Duration Standards
+- 150ms for micro interactions.
+- 200–300ms for layout transitions.
+- No animations longer than 400ms in dashboards.
+
+====================================================
+7. ERROR PREVENTION & EDGE CASES
+====================================================
+
+- Handle empty states.
+- Handle long text overflow.
+- Handle slow networks.
+- Handle API failure gracefully.
+- Prevent layout shift (reserve space).
+
+====================================================
+8. FILE STRUCTURE GUIDELINES
+====================================================
+
+- /components
+- /features
+- /hooks
+- /services
+- /utils
+- /styles
+- /constants
+
+Keep logic separated from UI.
+
+====================================================
+9. PROFESSIONAL POLISH CHECKLIST
+====================================================
+
+Before finalizing:
+- Is spacing consistent?
+- Are hover states smooth?
+- Is loading handled?
+- Is contrast accessible?
+- Is code readable?
+- Is bundle size reasonable?
+
+If not, fix it.
+
+====================================================
+10. MINDSET RULES
+====================================================
+
+- Think like the user.
+- Design like Apple.
+- Engineer like a performance-obsessed backend dev.
+- Ship only what you would proudly show in a senior interview.
